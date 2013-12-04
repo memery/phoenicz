@@ -16,7 +16,7 @@ In the working directory of memery, the entire test suite can be run with
 
 All modules should have tests contained in the file `test_<module>.py`. All
 such test modules should have a method `test_run_all()` that runs all tests for
-that module. When you add a new module, modify `test_<module>.py` so that it also runs your
+that module. When you add a new module, modify `tests.py` so that it also runs your
 module's `test_run_all()` function.
 
 
