@@ -30,30 +30,31 @@ def fakewrapper(sock):
     sock.ssl_wrapped = True
     return sock
 
-def test_socket():
+def test_socket(logger):
     for ssl in [False, True]:
+        if ssl: logger = logger.deeper('ssl')
 
-        print('[irc/Socket]: Creating pretend socket with{} ssl...'.format('out' if not ssl else ''))
+        logger.print('Creating pretend socket with{} ssl...'.format('out' if not ssl else ''))
         pret = PretendSocket()
         sock = irc.Socket('server', 42, ssl, 300, sock=pret, ssl_wrap=fakewrapper)
         
         # no contents, reading should be empty string
-        print('[irc/Socket]: Reading without any socket contents...')
+        logger.print('Reading without any socket contents...')
         assert sock.read() == ''
 
         # no complete line available, reading should still be empty
-        print('[irc/Socket]: Reading with an incomplete line...')
+        logger.print('Reading with an incomplete line...')
         pret.contents = b'hello, wor'
         assert sock.read() == ''
 
         # complete line should be returned!
-        print('[irc/Socket]: Reading with a single complete line...')
+        logger.print('Reading with a single complete line...')
         pret.contents = b'ld!\r\n'
         assert sock.read() == 'hello, world!'
 
         # only one line should be returned at a time
         # last line is not complete and should not be returned
-        print('[irc/Socket]: Reading quite a few lines...')
+        logger.print('Reading quite a few lines...')
         pret.contents = b'a\r\nb\r\nc\r\nd'
         assert sock.read() == 'a'
         assert sock.read() == 'b'
@@ -63,9 +64,9 @@ def test_socket():
 
     return True
 
-def test_run_all():
-    print('[irc]: Running all tests...')
-    assert test_socket()
-    print('[irc]: All tests complete!')
+def test_run_all(logger):
+    logger.print('Running all tests...')
+    assert test_socket(logger.deeper('socket'))
+    logger.print('All tests complete!')
     return True
 

@@ -6,6 +6,10 @@ ALWAYS WRITE AND RUN TESTS BEFORE YOU COMMIT TO THE MASTER BRANCH.
 Write tests as you are writing the code – it helps you catch invariants and
 corner cases you might forget about later.
 
+
+Running and making tests
+------------------------
+
 In the working directory of memery, the entire test suite can be run with
 
     $ python3 tests.py
@@ -15,19 +19,16 @@ such test modules should have a method `test_run_all()` that runs all tests for
 that module. When you add a new module, modify `test_<module>.py` so that it also runs your
 module's `test_run_all()` function.
 
-By convention, modules start their suite by printing
 
-    [<module>]: Running all tests...
+Test logging
+------------
 
-and end it with
+The `tests.py` module provides a `Logger` object which can (and should?) be
+used to log what the tests are testing for. It has two methods:
 
-    [<module>]: All tests complete!
+ 1. `logger.print(msg)` which prints the message neatly, and
+ 2. `logger.deeper(part)` which creates a new logger that can be used by some
+    other test, deeper in the hierarchy
 
-Each actual test is prefaced with
+See the existing testing modules for further usage information.
 
-    [<module>/<part>]: <Doing xxx>
-
-where `<part>` is some sort of identifier for what part of `<module>` is
-tested.
-
-All this printing stuff could probably be a lot more automated...
