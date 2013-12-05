@@ -6,6 +6,7 @@ class PretendSocket:
         self.connected = False
         self.ssl_wrapped = False
         self.contents = b''
+        self.explode = False
 
     def connect(self, *args):
         self.connected = True
@@ -14,6 +15,7 @@ class PretendSocket:
         assert self.connected
 
     def send(self, msg):
+        assert not self.explode
         assert self.connected
 
     def read(self, *args):
@@ -21,6 +23,7 @@ class PretendSocket:
         return self.recv(*args)
 
     def recv(self, *args):
+        assert not self.explode
         assert self.connected
         contents = self.contents
         self.contents = b''
@@ -40,12 +43,12 @@ def test_socket(logger):
         
         # no contents, reading should be empty string
         logger.print('Reading without any socket contents...')
-        assert sock.read() == ''
+        assert sock.read() == None
 
         # no complete line available, reading should still be empty
         logger.print('Reading with an incomplete line...')
         pret.contents = b'hello, wor'
-        assert sock.read() == ''
+        assert sock.read() == None
 
         # complete line should be returned!
         logger.print('Reading with a single complete line...')
@@ -59,14 +62,45 @@ def test_socket(logger):
         assert sock.read() == 'a'
         assert sock.read() == 'b'
         assert sock.read() == 'c'
-        assert sock.read() == ''
-        assert sock.read() == ''
+        assert sock.read() == None
+        assert sock.read() == None
 
     return True
 
+def test_run(logger):
+    pret = PretendSocket()
+
+    logger.print('Testing run with invalid settings...')
+    try:
+        result = irc.run('', sock=pret)
+        irc.run({}, sock=pret)
+        irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, sock=pret)
+    except Exception as e:
+        raise AssertionError(str(e))
+    else:
+        assert result == 'reconnect'
+
+    logger.print('Testing run with bad socket...')
+    pret.explode = True
+    result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, sock=pret)
+    assert result == 'reconnect'
+
+    return True
+
+
+def test_handle(logger):
+    logger.print('Checking for response to PING...')
+    responses = irc.handle('PING :abracadabra', {})
+    assert 'PONG :abracadabra' in responses
+
+    return True
+
+
 def test_run_all(logger):
     logger.print('Running all tests...')
-    assert test_socket(logger.deeper('socket'))
+    assert test_socket(logger.deeper('Socket'))
+    assert test_run(logger.deeper('run'))
+    assert test_handle(logger.deeper('handle'))
     logger.print('All tests complete!')
     return True
 

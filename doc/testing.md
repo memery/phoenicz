@@ -6,6 +6,10 @@ ALWAYS WRITE AND RUN TESTS BEFORE YOU COMMIT TO THE MASTER BRANCH.
 Write tests as you are writing the code – it helps you catch invariants and
 corner cases you might forget about later.
 
+Tests are *especially* important when/if you do any **bug fixes**. Create a
+test that makes sure the bug is fixed. This will be of great help later on when
+refactoring, so nobody accidentally creates the same bug again.
+
 
 Running and making tests
 ------------------------

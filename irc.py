@@ -1,7 +1,86 @@
 
-import socket
-from ssl import wrap_socket
+import ircparser
 
+import socket
+from ssl import wrap_socket, SSLError
+from time import sleep
+
+
+# run() should *never* for *any* reason throw any exceptions.
+# the absolute worst cases should be caught in here and
+# then 'reconnect' returned back to main
+# This means that every single line should be covered
+# by a general "except Exception as e"!!
+def run(settings, sock=None):
+    try:
+        if sock:
+            irc = sock
+        else:
+            irc = Socket(
+                settings['irc']['server'],
+                settings['irc']['port'],
+                settings['irc']['ssl'],
+                settings['irc']['reconnect_delay']/10
+            )
+
+        irc.send('NICK {}'.format(settings['irc']['nick']))
+        irc.send('USER {0} 0 * :IRC Bot {0}'.format(settings['irc']['nick']))
+        sleep(1)
+        irc.send('JOIN {}'.format(settings['irc']['channel']))
+
+    except (socket.error, socket.herror, socket.gaierror):
+        # TODO: log something about failed connection and waiting for seconds and stuff
+        return 'reconnect'
+    except Exception as e:
+        # TODO: Log what the f happened
+        return 'reconnect'
+
+    while True:
+        try:
+            line = irc.read()
+            if line:
+                for response in handle(line, settings):
+                    irc.send(response)
+
+#        except BrokenPipeError:
+            # TODO: More of these errors. stolen from legacy:
+            #  *  ConnectionResetError
+            #  *  (ConnectionAbortedError, ConnectionRefusedError)
+            #  *  socket.timeout
+            # and probably also
+            #  *  SSLError (if 'timed out' in str(e))?
+            # TODO: log them and stuff.
+#            return 'reconnect'
+        except Exception as e:
+            print(str(e))
+            # Assume any other exception is benign and does not warrant a reconnect
+            # TODO: Log what the fuck happened
+            pass
+
+    return 'reconnect'
+
+
+# TODO: A lot of the stuff in here are candidates for
+# admin.py or behaviour.py of course. I'm just putting
+# it here for safekeeping
+def handle(line, settings):
+    # TODO: Write docstring about how this yields responses
+    user, command, arguments = ircparser.split(line)
+    nick = ircparser.get_nick(user)
+
+    if command == 'PING':
+        yield 'PONG :' + arguments[0]
+
+    if command == 'PRIVMSG':
+        channel = arguments[0]
+        message = ' '.join(arguments[1:])
+        print('{}> {}'.format(channel, message))
+
+        if message == 'hello, world':
+            yield ircparser.make_privmsg(settings['irc']['channel'], 'why, hello!')
+    else:
+        # TODO: Real logging instead of printing lines...
+        print(line)
 
 
 class Socket:
@@ -36,27 +115,30 @@ class Socket:
         self.sock.send(bytes(text + '\n', 'utf-8'))
 
     def read(self):
-        self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
+        try:
+            if b'\r\n' not in self.buffer:
+                self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
+        except socket.timeout:
+            pass
+        except SSLError as e:
+            if 'timed out' in str(e): pass
+            else: raise
+
         try:
             [byteline, self.buffer] = self.buffer.split(b'\r\n', 1)
         except ValueError:
-            # if there is no complete line in the buffer yet, return empty string
-            return ''
-        else:
-            def decode(text, encs):
-                for enc in encs:
-                    try: return text.decode(enc)
-                    # TODO: except what?
-                    except: continue
-                # fallback is iso-8859-1
-                # TODO: why is it, though? why not utf-8?
-                return text.decode('latin-1', 'replace')
-            
-            return decode(byteline, ['utf-8', 'latin-1', 'cp1252'])
+            return None
+
+        def decode(text, encs):
+            for enc in encs:
+                try: return text.decode(enc)
+                # TODO: except what?
+                except: continue
+            # fallback is iso-8859-1
+            # TODO: why is it, though? why not utf-8?
+            return text.decode('latin-1', 'replace')
+        
+        return decode(byteline, ['utf-8', 'latin-1', 'cp1252'])
 
 
-
-
-def run(*args):
-    print('stub!')
 
