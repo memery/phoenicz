@@ -38,18 +38,22 @@ def test_get_nick(logger):
     logger.print('Testing with only nick...')
     try: ircparser.get_nick('~john')
     except ValueError: pass
+    else: return False
 
     logger.print('Testing with empty nick...')
     try: ircparser.get_nick('~!host.thing')
     except ValueError: pass
+    else: return False
 
     logger.print('Testing with tilde nick...')
     try: ircparser.get_nick('~~~~!host.thing')
     except ValueError: pass
+    else: return False
 
     logger.print('Testing with a completely invalid string...')
     try: ircparser.get_nick('arstuaw~~3439')
     except ValueError: pass
+    else: return False
 
     logger.print('Testring with not a string...')
     assert ircparser.get_nick(None) == None
@@ -63,10 +67,12 @@ def test_make_privmsg(logger):
     logger.print('Trying to create a privmsg to an empty channel name...')
     try: ircparser.make_privmsg('', 'ho ho ho')
     except ValueError: pass
+    else: return False
 
     logger.print('Trying to create a privmsg to an empty channel name again...')
     try: ircparser.make_privmsg('#', 'again')
     except ValueError: pass
+    else: return False
 
     logger.print('Trying to create a privmsg with no content...')
     assert ircparser.make_privmsg('#m', '') == 'PRIVMSG #m :'

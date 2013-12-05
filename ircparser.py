@@ -56,7 +56,11 @@ def get_nick(user):
     """ Returns the nick part of a user mask (nick!user@host) """
     if not user: return None
     [user, host] = user.split('!', 1)
-    return user.lstrip('~')
+    nick = user.lstrip('~')
+    if nick:
+        return nick
+    else:
+        raise ValueError('Nickname can\'t be empty')
 
 
 def make_privmsg(channel, content):

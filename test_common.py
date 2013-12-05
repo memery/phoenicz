@@ -7,7 +7,7 @@ def test_read_config(logger):
     logger.print('Trying to read non-existent config...')
     try: common.read_config('')
     except: pass
-    else: raise AssertionError('Should not be able to read non-existent config')
+    else: return False
 
     return True
 
