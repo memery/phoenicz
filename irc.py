@@ -1,5 +1,5 @@
 
-import ircparser
+import ircparser, logger
 
 import socket
 from ssl import wrap_socket, SSLError
@@ -29,10 +29,15 @@ def run(settings, sock=None):
         irc.send('JOIN {}'.format(settings['irc']['channel']))
 
     except (socket.error, socket.herror, socket.gaierror):
-        # TODO: log something about failed connection and waiting for seconds and stuff
+        logger.log('error', 'Connection failed. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+
         return 'reconnect'
     except Exception as e:
-        # TODO: Log what the f happened
+        try:
+            logger.log('error', '{}. Reconnecting in {} seconds...'.format(e, settings['irc']['reconnect_delay']))
+        except:
+            logger.log('error', 'Bad config.')
+
         return 'reconnect'
 
     while True:
@@ -52,9 +57,7 @@ def run(settings, sock=None):
             # TODO: log them and stuff.
 #            return 'reconnect'
         except Exception as e:
-            print(str(e))
-            # Assume any other exception is benign and does not warrant a reconnect
-            # TODO: Log what the fuck happened
+            logger.log('error', str(e))
             pass
 
     return 'reconnect'
@@ -79,9 +82,7 @@ def handle(line, settings):
         if message == 'hello, world':
             yield ircparser.make_privmsg(settings['irc']['channel'], 'why, hello!')
     else:
-        # TODO: Real logging instead of printing lines...
-        print(line)
-
+        logger.log('raw', line)
 
 class Socket:
 
