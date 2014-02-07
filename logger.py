@@ -1,7 +1,17 @@
-import inspect, datetime
-import common
+import inspect, datetime, errno
 
-def log(message, type, test=False):
+def append_file(file, str):
+    try:
+        with open(file, 'a') as f:
+            f.write(str + '\n')
+    except IOError as e:
+        if e.errno == errno.ENOENT:
+            with open(file, 'w') as f:
+                f.write(str + '\n')
+        else:
+            raise
+
+def log(message, type, output_to_file=True):
     frames = inspect.stack()[1]
     mod = inspect.getmodule(frames[0])
 
@@ -10,9 +20,10 @@ def log(message, type, test=False):
     filename = 'log/{}.log'.format(type)
     msg = '{} [{}]: {}'.format(mod.__name__, ts, message)
 
-    if not test:
+    if output_to_file:
         append_file(filename, msg)
-        return None
-    else:
-        return { 'filename': filename,
-                 'msg': msg }
+
+    return { 'filename': filename,
+             'msg':      msg       }
+
+

@@ -26,11 +26,3 @@ def read_json(str):
 def read_config(fn):
     conf = read_json(read_file_or_die(fn))
     return conf
-
-
-def append_file(file, str):
-    try:
-        with open(file, 'a') as f:
-            f.write(str)
-    except IOError:
-        print('Cannot write to \'{}\'. Anyway:\n{}'.format(file, str))
