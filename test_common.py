@@ -1,4 +1,3 @@
-
 import common
 
 def test_read_config(logger):
