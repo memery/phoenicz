@@ -27,5 +27,3 @@ def log(log_type, message):
 
     return { 'filename': filename,
              'msg':      msg       }
-
-
