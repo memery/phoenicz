@@ -111,9 +111,9 @@ def test_run(logger):
     logger.print('Testing run with bad socket...')
     pret.explode = True
     try:
-        for pret.explosion in [BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]:
+        for i, pret.explosion in enumerate([BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]):
             result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, log=flog.log_to_list, sock=pret)
-            assert flog.logged_list[3]
+            assert flog.logged_list[3 + i]
             assert result == 'reconnect'
     except IndexError:
         raise AssertionError('run() didn\'t log')
