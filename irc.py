@@ -53,7 +53,7 @@ def run(settings, sock=None):
         except ConnectionResetError:
             logger.log('error', 'Connection reset. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
             return 'reconnect'
-        except (ConnectionAbortedError, Connectio2nRefusedError):
+        except (ConnectionAbortedError, ConnectionRefusedError):
             logger.log('error', 'Connection refused or aborted. Closing...')
             return 'quit'
         except socket.timeout:
