@@ -47,18 +47,23 @@ def run(settings, sock=None):
                 for response in handle(line, settings):
                     irc.send(response)
 
-#        except BrokenPipeError:
+        except BrokenPipeError:
+            logger.log('error', 'Broken pipe. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+            return 'reconnect'
+        except ConnectionResetError:
+            logger.log('error', 'Connection reset. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+            return 'reconnect'
+        except (ConnectionAbortedError, Connectio2nRefusedError):
+            logger.log('error', 'Connection refused or aborted. Closing...')
+            return 'quit'
+        except socket.timeout:
+            logger.log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+            return 'reconnect'
             # TODO: More of these errors. stolen from legacy:
-            #  *  ConnectionResetError
-            #  *  (ConnectionAbortedError, ConnectionRefusedError)
-            #  *  socket.timeout
-            # and probably also
+            # probably also
             #  *  SSLError (if 'timed out' in str(e))?
-            # TODO: log them and stuff.
-#            return 'reconnect'
         except Exception as e:
             logger.log('error', str(e))
-            pass
 
     return 'reconnect'
 
