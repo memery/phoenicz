@@ -8,7 +8,7 @@ class PretendSocket:
         self.ssl_wrapped = False
         self.contents = b''
         self.explode = False
-        self.expiotion = None
+        self.explosion = None
 
     def connect(self, *args):
         if self.explode:

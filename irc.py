@@ -47,7 +47,7 @@ def run(settings, sock=None):
                 for response in handle(line, settings):
                     irc.send(response)
 
-        # TODO: These excepitons should be handled in the socket class. They are overridden
+        # TODO: These exceptions should be handled in the socket class. They are overridden
               # earlier in this function in the handshake.
         except BrokenPipeError:
             logger.log('error', 'Broken pipe. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
