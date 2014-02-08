@@ -1,5 +1,18 @@
+import socket
 
 import irc
+
+class FakeLogger:
+    def __init__(self):
+        self.logged = False
+        self.logged_list = []
+
+    def log(self, x, y):
+        self.logged = True
+
+    def log_to_list(self, x, y):
+        self.logged_list.append(True)
+
 
 class PretendSocket:
     def __init__(self, *args):
@@ -7,14 +20,19 @@ class PretendSocket:
         self.ssl_wrapped = False
         self.contents = b''
         self.explode = False
+        self.explosion = None
 
     def connect(self, *args):
+        if self.explode:
+            raise self.explosion()
         self.connected = True
 
     def settimeout(self, *args):
         assert self.connected
 
     def send(self, msg):
+        if self.explode:
+            raise self.explosion()
         assert not self.explode
         assert self.connected
 
@@ -23,6 +41,8 @@ class PretendSocket:
         return self.recv(*args)
 
     def recv(self, *args):
+        if self.explode:
+            raise self.explosion()
         assert not self.explode
         assert self.connected
         contents = self.contents
@@ -70,28 +90,47 @@ def test_socket(logger):
 def test_run(logger):
     pret = PretendSocket()
 
+    flog = FakeLogger()
+
     logger.print('Testing run with invalid settings...')
     try:
-        result = irc.run('', sock=pret)
-        irc.run({}, sock=pret)
-        irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, sock=pret)
+        result = irc.run('', log=flog.log_to_list, sock=pret)
+        assert flog.logged_list[0]
+        irc.run({}, log=flog.log_to_list, sock=pret)
+        assert flog.logged_list[1]
+        irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, log=flog.log_to_list, sock=pret)
+        assert flog.logged_list[2]
+    except IndexError:
+        raise AssertionError('run() didn\'t log')
     except Exception as e:
         raise AssertionError(str(e))
     else:
         assert result == 'reconnect'
 
+
     logger.print('Testing run with bad socket...')
     pret.explode = True
-    result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, sock=pret)
-    assert result == 'reconnect'
+    try:
+        for i, pret.explosion in enumerate([BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]):
+            result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, log=flog.log_to_list, sock=pret)
+            assert flog.logged_list[3 + i]
+            assert result == 'reconnect'
+    except IndexError:
+        raise AssertionError('run() didn\'t log')
 
     return True
 
 
 def test_handle(logger):
+    frog = FakeLogger()
+
     logger.print('Checking for response to PING...')
     responses = irc.handle('PING :abracadabra', {})
     assert 'PONG :abracadabra' in responses
+    logger.print('Checking if things get logged correctly')
+    for _ in irc.handle('completely geschtonkenflapped', {}, log=frog.log):
+        pass # We are only interested in the generator's side-effects here.
+    assert frog.logged
 
     return True
 

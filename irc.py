@@ -1,5 +1,4 @@
-
-import ircparser
+import ircparser, logger
 
 import socket
 from ssl import wrap_socket, SSLError
@@ -11,7 +10,7 @@ from time import sleep
 # then 'reconnect' returned back to main
 # This means that every single line should be covered
 # by a general "except Exception as e"!!
-def run(settings, sock=None):
+def run(settings, log=logger.log, sock=None):
     try:
         if sock:
             irc = sock
@@ -29,10 +28,15 @@ def run(settings, sock=None):
         irc.send('JOIN {}'.format(settings['irc']['channel']))
 
     except (socket.error, socket.herror, socket.gaierror):
-        # TODO: log something about failed connection and waiting for seconds and stuff
+        log('error', 'Connection failed. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+
         return 'reconnect'
     except Exception as e:
-        # TODO: Log what the f happened
+        try:
+            log('error', '{}. Reconnecting in {} seconds...'.format(e, settings['irc']['reconnect_delay']))
+        except:
+            log('error', 'Bad config.')
+
         return 'reconnect'
 
     while True:
@@ -42,20 +46,25 @@ def run(settings, sock=None):
                 for response in handle(line, settings):
                     irc.send(response)
 
-#        except BrokenPipeError:
+        # TODO: These exceptions should be handled in the socket class. They are overridden
+              # earlier in this function in the handshake.
+        except BrokenPipeError:
+            log('error', 'Broken pipe. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+            return 'reconnect'
+        except ConnectionResetError:
+            log('error', 'Connection reset. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+            return 'reconnect'
+        except (ConnectionAbortedError, ConnectionRefusedError):
+            log('error', 'Connection refused or aborted. Closing...')
+            return 'quit'
+        except socket.timeout:
+            log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+            return 'reconnect'
             # TODO: More of these errors. stolen from legacy:
-            #  *  ConnectionResetError
-            #  *  (ConnectionAbortedError, ConnectionRefusedError)
-            #  *  socket.timeout
-            # and probably also
+            # probably also
             #  *  SSLError (if 'timed out' in str(e))?
-            # TODO: log them and stuff.
-#            return 'reconnect'
         except Exception as e:
-            print(str(e))
-            # Assume any other exception is benign and does not warrant a reconnect
-            # TODO: Log what the fuck happened
-            pass
+            log('error', str(e))
 
     return 'reconnect'
 
@@ -63,7 +72,7 @@ def run(settings, sock=None):
 # TODO: A lot of the stuff in here are candidates for
 # admin.py or behaviour.py of course. I'm just putting
 # it here for safekeeping
-def handle(line, settings):
+def handle(line, settings, log=logger.log):
     # TODO: Write docstring about how this yields responses
     user, command, arguments = ircparser.split(line)
     nick = ircparser.get_nick(user)
@@ -79,8 +88,7 @@ def handle(line, settings):
         if message == 'hello, world':
             yield ircparser.make_privmsg(settings['irc']['channel'], 'why, hello!')
     else:
-        # TODO: Real logging instead of printing lines...
-        print(line)
+        log('raw', line)
 
 
 class Socket:
