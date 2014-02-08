@@ -14,13 +14,13 @@ def append_file(file, str):
         else:
             raise
 
-def log(type, message, output_to_file=True):
+def log(log_type, message, output_to_file=True):
     frames = inspect.stack()[1]
     mod = inspect.getmodule(frames[0])
 
     ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    filename = 'log/{}.log'.format(type)
+    filename = 'log/{}.log'.format(log_type)
     msg = '{} [{}]: {}'.format(mod.__name__, ts, message)
 
     if output_to_file:
