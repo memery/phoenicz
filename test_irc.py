@@ -1,3 +1,4 @@
+import socket
 
 import irc
 
@@ -7,22 +8,31 @@ class PretendSocket:
         self.ssl_wrapped = False
         self.contents = b''
         self.explode = False
+        self.expiotion = None
 
     def connect(self, *args):
+        if self.explode:
+            raise self.explosion()
         self.connected = True
 
     def settimeout(self, *args):
         assert self.connected
 
     def send(self, msg):
+        if self.explode:
+            raise self.explosion()
         assert not self.explode
         assert self.connected
 
     def read(self, *args):
+        if self.explode:
+            raise self.explosion()
         assert self.ssl_wrapped
         return self.recv(*args)
 
     def recv(self, *args):
+        if self.explode:
+            raise self.explosion()
         assert not self.explode
         assert self.connected
         contents = self.contents
@@ -80,10 +90,12 @@ def test_run(logger):
     else:
         assert result == 'reconnect'
 
+
     logger.print('Testing run with bad socket...')
     pret.explode = True
-    result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, sock=pret)
-    assert result == 'reconnect'
+    for pret.explosion in [BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]:
+        result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, sock=pret)
+        assert result == 'reconnect'
 
     return True
 
