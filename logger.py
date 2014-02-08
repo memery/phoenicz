@@ -14,7 +14,7 @@ def append_file(file, str):
         else:
             raise
 
-def log(log_type, message, output_to_file=True):
+def log(log_type, message):
     frames = inspect.stack()[1]
     mod = inspect.getmodule(frames[0])
 
@@ -23,8 +23,7 @@ def log(log_type, message, output_to_file=True):
     filename = 'log/{}.log'.format(log_type)
     msg = '{} [{}]: {}'.format(mod.__name__, ts, message)
 
-    if output_to_file:
-        append_file(filename, msg)
+    append_file(filename, msg)
 
     return { 'filename': filename,
              'msg':      msg       }

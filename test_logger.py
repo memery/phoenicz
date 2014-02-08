@@ -17,7 +17,7 @@ def test_append_file(logger_):
 def test_log(logger_):
     logger_.print('Testing log output format...')
 
-    ret = logger.log('error', 'error1', output_to_file=False)
+    ret = logger.log('error', 'error1')
 
     assert ret['filename'] == 'log/error.log'
 
