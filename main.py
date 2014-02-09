@@ -27,7 +27,7 @@ def validate_settings(settings, log=logger.log):
 
 def main():
     settings = common.read_config('config')
-    if not validate_settings(settings) == 'quit':
+    if validate_settings(settings) == 'quit':
         exit()
 
     while True:
