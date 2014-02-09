@@ -1,7 +1,8 @@
-import main, test_irc
+import tests
+import main
 
 def test_validate_settings(logger):
-    flog = test_irc.FakeLogger()
+    flog = tests.FakeLogger()
     
     logger.print('Testing validation of broken settings...')
 

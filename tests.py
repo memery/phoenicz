@@ -5,6 +5,18 @@ import test_ircparser
 import test_common
 import test_logger
 
+
+class FakeLogger:
+    def __init__(self):
+        self.logged = False
+        self.logged_list = []
+
+    def log(self, x, y):
+        self.logged = True
+
+    def log_to_list(self, x, y):
+        self.logged_list.append(True)
+
 class Logger:
     def __init__(self, next, previous=[]):
         self.hierarchy = previous + [next]
