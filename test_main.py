@@ -24,10 +24,28 @@ def test_validate_settings(logger):
     assert result == 'quit'
     assert flog.logged
 
+    logger.print('Testing with missing settings')
+
+    settings['irc'].pop('nick')
+    flog.logged = False
+    result = main.validate_settings(settings, log=flog.log)
+
+    assert result == 'quit'
+    assert flog.logged
+
     logger.print('Testing with valid settings...')
 
     flog.logged = False
     settings['irc']['nick'] = 'nick'
+    result = main.validate_settings(settings, log=flog.log)
+
+    assert result != 'quit'
+    assert not flog.logged
+
+    logger.print('Testing with additional settings...')
+
+    flog.logged = False
+    settings['irc']['lag'] = 'don\'t'
     result = main.validate_settings(settings, log=flog.log)
 
     assert result != 'quit'
@@ -38,7 +56,7 @@ def test_validate_settings(logger):
 
 def test_run_all(logger):
     logger.print('Running all tests...')
-    assert test_validate_settings(logger.deeper('Settings validation'))
+    assert test_validate_settings(logger.deeper('validate_settings'))
     logger.print('All tests complete!')
     return True
 
