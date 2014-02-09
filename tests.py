@@ -1,4 +1,5 @@
 
+import test_main
 import test_irc
 import test_ircparser
 import test_common
@@ -23,6 +24,7 @@ class Logger:
 # some weird error.)
 def test_run_all():
     print('Running all tests...')
+    assert test_main.test_run_all(Logger('main'))
     assert test_ircparser.test_run_all(Logger('ircparser'))
     assert test_common.test_run_all(Logger('common'))
     assert test_irc.test_run_all(Logger('irc'))
