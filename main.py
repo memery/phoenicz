@@ -28,7 +28,7 @@ def valid_settings(settings, log=logger.log):
 
 
 def main():
-    settings = common.read_config('config')
+    settings = common.read_config('config.json')
     if not valid_settings(settings):
         exit()
 
