@@ -20,7 +20,7 @@ def valid_settings(settings, log=logger.log):
                 if type(settings[category][setting]) != setting_type:
                     log('error', 'Invalid settings: {}/{} must be of type {}. Closing.'.format(category, setting, str(setting_type)))
                     return False
-            except KeyError:
+            except (KeyError, TypeError):
                 log('error', 'Invalid settings: {}/{} not found. Closing.'.format(category, setting))
                 return False
 

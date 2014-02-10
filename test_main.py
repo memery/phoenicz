@@ -10,6 +10,11 @@ def test_valid_settings(logger):
     assert not result
     assert flog.logged
 
+    flog.logged = False
+    result = main.valid_settings('', log=flog.log)
+    assert not result
+    assert flog.logged
+
     settings = {'irc': {
                    'nick': 1,
                    'channel': '#channel',
