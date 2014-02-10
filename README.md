@@ -12,7 +12,7 @@ All Python code (except plugins, see separate copyright notice in the plugin
 directory) is licensed under the following three-clause BSD license and
 copyrighted to their respective authors.
 
-    Copyright (c) 2013, nycz, kqr
+    Copyright (c) 2013, nycz, kqr, jocke-l
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
