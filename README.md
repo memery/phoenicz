@@ -5,6 +5,8 @@ phoenix
 Fourth incarnation of memery, without concurrency because terrible architecture
 is a bitch.
 
+> DEPENDS ON PYTHON 3.3.1 OR HIGHER
+
 Licensing
 =========
 
