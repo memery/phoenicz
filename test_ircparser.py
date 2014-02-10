@@ -36,24 +36,16 @@ def test_get_nick(logger):
     assert ircparser.get_nick('sam!host~john!thing') == 'sam'
 
     logger.print('Testing with only nick...')
-    try: ircparser.get_nick('~john')
-    except ValueError: pass
-    else: return False
+    assert ircparser.get_nick('~john') is None
 
     logger.print('Testing with empty nick...')
-    try: ircparser.get_nick('~!host.thing')
-    except ValueError: pass
-    else: return False
+    assert ircparser.get_nick('~!host.thing') is None
 
     logger.print('Testing with tilde nick...')
-    try: ircparser.get_nick('~~~~!host.thing')
-    except ValueError: pass
-    else: return False
+    assert ircparser.get_nick('~~~~!host.thing') is None
 
     logger.print('Testing with a completely invalid string...')
-    try: ircparser.get_nick('arstuaw~~3439')
-    except ValueError: pass
-    else: return False
+    assert ircparser.get_nick('arstuaw~~3439') is None
 
     logger.print('Testring with not a string...')
     assert ircparser.get_nick(None) == None
