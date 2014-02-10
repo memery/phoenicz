@@ -1,17 +1,6 @@
 import socket
-
+import tests
 import irc
-
-class FakeLogger:
-    def __init__(self):
-        self.logged = False
-        self.logged_list = []
-
-    def log(self, x, y):
-        self.logged = True
-
-    def log_to_list(self, x, y):
-        self.logged_list.append(True)
 
 
 class PretendSocket:
@@ -90,7 +79,7 @@ def test_socket(logger):
 def test_run(logger):
     pret = PretendSocket()
 
-    flog = FakeLogger()
+    flog = tests.FakeLogger()
 
     logger.print('Testing run with invalid settings...')
     try:
@@ -122,7 +111,7 @@ def test_run(logger):
 
 
 def test_handle(logger):
-    frog = FakeLogger()
+    frog = tests.FakeLogger()
 
     logger.print('Checking for response to PING...')
     responses = irc.handle('PING :abracadabra', {})
