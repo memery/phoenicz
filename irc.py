@@ -38,8 +38,7 @@ def run(settings, state, log=logger.log, sock=None):
         return 'reconnect'
     except Exception as e:
         try:
-            log('error', '{}. Reconnecting in {} seconds...'.format(common.error_info(e),
-                                                                    settings['irc']['reconnect_delay']))
+            log('error', '{}. Reconnecting in {} seconds...'.format(e, settings['irc']['reconnect_delay']))
         except:
             log('error', 'Bad config.')
 
@@ -70,7 +69,7 @@ def run(settings, state, log=logger.log, sock=None):
             # probably also
             #  *  SSLError (if 'timed out' in str(e))?
         except Exception as e:
-            log('error', common.error_info(e))
+            log('error', e)
 
     return 'reconnect'
 
