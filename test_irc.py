@@ -128,7 +128,7 @@ def test_handle(logger):
 
     frog.reset()
     logger.print('Checking that a nick change happens when nick is in use...')
-    responses = irc.handle('433 anything', {'irc': {'nick': 'orignick'}}, {'irc': {'nick': 'lolbawt'}}, log=frog.log)
+    responses = irc.handle('433 anything', {'irc': {'nick': 'orignick'}}, {'nick': 'lolbawt'}, log=frog.log)
     assert any('NICK ' in response for response in responses)
     assert frog.logged
 

@@ -1,4 +1,4 @@
-import common, ircparser, logger
+import common, ircparser, logger, statekeeper
 
 import socket
 import random
@@ -24,9 +24,8 @@ def run(settings, state, log=logger.log, sock=None):
                 settings['irc']['reconnect_delay']/10
             )
 
-        # TODO: The following line can be solved better with a state object
-        state['irc'] = {}
-        state['irc']['nick'] = settings['irc']['nick']
+        state = statekeeper.StateKeeper()
+        state['nick'] = settings['irc']['nick']
         irc.send('NICK {}'.format(settings['irc']['nick']))
 
         irc.send('USER {0} 0 * :IRC Bot {0}'.format(settings['irc']['nick']))
@@ -93,9 +92,9 @@ def handle(line, settings, state, log=logger.log):
             nick = nick[:min(len(nick), 6)] # determine how much to shave off to make room for random chars
             return '{}_{}'.format(nick, ''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(2)))
 
-        log('warning', '[statekeeping] Nick {} already in use, trying another one.'.format(state['irc']['nick']))
-        state['irc']['nick'] = new_nick(settings['irc']['nick'])
-        yield 'NICK {}'.format(state['irc']['nick'])
+        log('warning', '[statekeeping] Nick {} already in use, trying another one.'.format(state['nick']))
+        state['nick'] = new_nick(settings['irc']['nick'])
+        yield 'NICK {}'.format(state['nick'])
 
 
     if command == 'PRIVMSG':

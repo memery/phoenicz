@@ -4,6 +4,7 @@ import test_irc
 import test_ircparser
 import test_common
 import test_logger
+import test_statekeeper
 
 
 class FakeLogger:
@@ -43,6 +44,7 @@ def test_run_all():
     assert test_main.test_run_all(Logger('main'))
     assert test_ircparser.test_run_all(Logger('ircparser'))
     assert test_common.test_run_all(Logger('common'))
+    assert test_statekeeper.test_run_all(Logger('statekeeper'))
     assert test_irc.test_run_all(Logger('irc'))
     assert test_logger.test_run_all(Logger('logger'))
     print('All tests complete!')
