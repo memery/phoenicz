@@ -1,7 +1,8 @@
 import socket
-import tests
+import testlib
 import irc
 
+import unittest
 
 class PretendSocket:
     def __init__(self, *args):
@@ -38,146 +39,120 @@ class PretendSocket:
         self.contents = b''
         return contents
 
-def fakewrapper(sock):
-    sock.ssl_wrapped = True
-    return sock
 
-def test_socket(logger):
-    for ssl in [False, True]:
-        if ssl: logger = logger.deeper('ssl')
+class SocketTest(unittest.TestCase):
 
-        logger.print('Creating pretend socket with{} ssl...'.format('out' if not ssl else ''))
-        pret = PretendSocket()
-        sock = irc.Socket('server', 42, ssl, 300, sock=pret, ssl_wrap=fakewrapper)
-        
-        # no contents, reading should be empty string
-        logger.print('Reading without any socket contents...')
-        assert sock.read() == None
+    def test_socket(self):
+        def fakewrapper(sock):
+            sock.ssl_wrapped = True
+            return sock
 
-        # no complete line available, reading should still be empty
-        logger.print('Reading with an incomplete line...')
-        pret.contents = b'hello, wor'
-        assert sock.read() == None
+        for ssl in (False, True):
+            pret = PretendSocket()
+            sock = irc.Socket('server', 42, ssl, 300, sock=pret, ssl_wrap=fakewrapper)
 
-        # complete line should be returned!
-        logger.print('Reading with a single complete line...')
-        pret.contents = b'ld!\r\n'
-        assert sock.read() == 'hello, world!'
+            # no contents, reading should be empty string
+            self.assertIsNone(sock.read())
 
-        # only one line should be returned at a time
-        # last line is not complete and should not be returned
-        logger.print('Reading quite a few lines...')
-        pret.contents = b'a\r\nb\r\nc\r\nd'
-        assert sock.read() == 'a'
-        assert sock.read() == 'b'
-        assert sock.read() == 'c'
-        assert sock.read() == None
-        assert sock.read() == None
+            # no complete line available, reading should still be empty
+            pret.contents = b'hello, wor'
+            self.assertIsNone(sock.read())
 
-    return True
+            # complete line should be returned!
+            pret.contents = b'ld!\r\n'
+            self.assertEqual(sock.read(), 'hello, world!')
 
-def test_run(logger):
-    pret = PretendSocket()
-
-    flog = tests.FakeLogger()
-
-    logger.print('Testing run with invalid settings...')
-    try:
-        result = irc.run('', {}, log=flog.log_to_list, sock=pret)
-        assert flog.logged_list[0]
-        irc.run({}, {}, log=flog.log_to_list, sock=pret)
-        assert flog.logged_list[1]
-        irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, {}, log=flog.log_to_list, sock=pret)
-        assert flog.logged_list[2]
-    except IndexError:
-        raise AssertionError('run() didn\'t log')
-    except Exception as e:
-        raise AssertionError(str(e))
-    else:
-        assert result == 'reconnect'
+            # only one line should be returned at a time
+            # last line is not complete and should not be returned
+            pret.contents = b'a\r\nb\r\nc\r\nd'
+            self.assertEqual(sock.read(), 'a')
+            self.assertEqual(sock.read(), 'b')
+            self.assertEqual(sock.read(), 'c')
+            self.assertIsNone(sock.read())
+            self.assertIsNone(sock.read())
 
 
-    logger.print('Testing run with bad socket...')
-    pret.explode = True
-    try:
-        for i, pret.explosion in enumerate([BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]):
-            result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}},
-                             {}, log=flog.log_to_list, sock=pret)
-            assert flog.logged_list[3 + i]
-            assert result == 'reconnect'
-    except IndexError:
-        raise AssertionError('run() didn\'t log')
+class RunTest(unittest.TestCase):
 
-    return True
+    def setUp(self):
+        self.pret = PretendSocket()
+        self.flog = testlib.FakeLogger()
+
+    def test_with_invalid_settings(self):
+        try:
+            result = irc.run('', {}, log=self.flog.log_to_list, sock=self.pret)
+            self.assertTrue(self.flog.logged_list[0])
+            irc.run({}, {}, log=self.flog.log_to_list, sock=self.pret)
+            self.assertTrue(self.flog.logged_list[1])
+            irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, {}, log=self.flog.log_to_list, sock=self.pret)
+            self.assertTrue(self.flog.logged_list[2])
+        except IndexError:
+            self.fail('run() didn\'t log')
+        except Exception as e:
+            self.fail(str(e))
+        else:
+            self.assertEqual(result, 'reconnect')
+
+    def test_with_bad_socket(self):
+        self.pret.explode = True
+        try:
+            for i, self.pret.explosion in enumerate([BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]):
+                result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}},
+                                 {}, log=self.flog.log_to_list, sock=self.pret)
+                self.assertTrue(self.flog.logged_list[i])
+                self.assertEqual(result, 'reconnect')
+        except IndexError:
+            self.fail('run() didn\'t log')
 
 
-def test_handle(logger):
-    def force_evaluation(mygen):
+class HandleTest(unittest.TestCase):
+
+    def setUp(self):
+        self.frog = testlib.FakeLogger()
+        self.fakesettings = {'irc': {'channel': '#channel'}}
+
+    def force_evaluation(self, mygen):
         for _ in mygen:
             pass
 
-    frog = tests.FakeLogger()
-    fakesettings = {'irc': {'channel': '#channel'}}
+    def test_ping_response(self):
+        self.assertIn('PONG :abracadabra', irc.handle('PING :abracadabra', self.fakesettings, {}))
 
-    logger.print('Checking for response to PING...')
-    responses = irc.handle('PING :abracadabra', fakesettings, {})
-    assert 'PONG :abracadabra' in responses
+    def test_log_broken_message(self):
+        self.force_evaluation(irc.handle('completely geschtonkenflapped', self.fakesettings, {}, log=self.frog.log))
+        self.assertTrue(self.frog.logged)
 
-    logger.print('Checking a broken message results in logging...')
-    force_evaluation(irc.handle('completely geschtonkenflapped', fakesettings, {}, log=frog.log))
-    assert frog.logged
+    def test_nick_change_when_in_use(self):
+        responses = irc.handle('433 anything', {'irc': {'nick': 'orignick'}}, {'nick': 'lolbawt'}, log=self.frog.log)
+        self.assertTrue(any('NICK ' in response for response in responses))
+        self.assertTrue(self.frog.logged)
 
-    logger.print('Checking that a nick change happens when nick is in use...')
-    frog.reset()
-    responses = irc.handle('433 anything', {'irc': {'nick': 'orignick'}}, {'nick': 'lolbawt'}, log=frog.log)
-    assert any('NICK ' in response for response in responses)
-    assert frog.logged
+    def test_state_change_after_channel_join(self):
+        fakestate = {'joined_channel': None, 'nick': 'tnick'}
+        self.force_evaluation(irc.handle(':tnick!example.com JOIN :#channel', {'irc': {'channel': '#channel'}}, fakestate, log=self.frog.log))
+        self.assertEqual(fakestate['joined_channel'], '#channel')
 
-    logger.print('Checking that channel join results in appropriate state change...')
-    frog.reset()
-    fakestate = {'joined_channel': None, 'nick': 'tnick'}
-    force_evaluation(irc.handle(':tnick!example.com JOIN :#channel', {'irc': {'channel': '#channel'}}, fakestate, log=frog.log))
-    assert fakestate['joined_channel'] == '#channel'
-    # TODO: when it actually logs something, assert frog.logged
+    def test_channel_removal_after_kick(self):
+        fakestate = {'joined_channel': '#channel', 'nick': 'tnick'}
+        self.force_evaluation(irc.handle('KICK #channel tnick :asdkfb', self.fakesettings, fakestate, log=self.frog.log))
+        self.assertIsNone(fakestate['joined_channel'])
+        self.assertIsNone(self.fakesettings['irc']['channel'])
+        self.assertTrue(self.frog.logged)
+        self.assertIn('asdkfb', self.frog.contents)
 
-    logger.print('Checking that a kick results in removal of channel everywhere...')
-    frog.reset()
-    fakestate = {'joined_channel': '#channel', 'nick': 'tnick'}
-    fakesettings = {'irc': {'channel': '#channel'}}
-    force_evaluation(irc.handle('KICK #channel tnick :asdkfb', fakesettings, fakestate, log=frog.log))
-    assert fakestate['joined_channel'] is None
-    assert fakesettings['irc']['channel'] is None
-    assert frog.logged
-    assert 'asdkfb' in frog.contents
+    def test_status_unaffected_after_others_kick(self):
+        fakestate = {'joined_channel': '#channel', 'nick': 'tnick'}
+        self.force_evaluation(irc.handle('KICK #channel wrongnick :reason', self.fakesettings, fakestate, log=self.frog.log))
+        self.assertEqual(fakestate['joined_channel'], '#channel')
+        self.assertEqual(self.fakesettings['irc']['channel'], '#channel')
 
-    logger.print('Checking that someone else getting kicked doesn\'t affect status..')
-    frog.reset()
-    fakestate = {'joined_channel': '#channel', 'nick': 'tnick'}
-    fakesettings = {'irc': {'channel': '#channel'}}
-    force_evaluation(irc.handle('KICK #channel wrongnick :reason', fakesettings, fakestate, log=frog.log))
-    assert fakestate['joined_channel'] == '#channel'
-    assert fakesettings['irc']['channel'] == '#channel'
+    def test_join_channel_when_applicable(self):
+        responses = irc.handle('666', {'irc': {'channel': '#testchan'}}, {'joined_channel': None}, log=self.frog.log)
+        self.assertIn('JOIN #testchan', responses)
 
-    logger.print('Seeing if handle tries to join channel when applicable...')
-    responses = irc.handle('666', {'irc': {'channel': '#testchan'}}, {'joined_channel': None}, log=frog.log)
-    assert 'JOIN #testchan' in responses
-
-    logger.print('Seeing if handle tries to join channel when NOT applicable...')
-    responses = irc.handle('666', {'irc': {'channel': '#testchan'}}, {'joined_channel': '#testchan'}, log=frog.log)
-    assert 'JOIN ' not in responses
-    responses = irc.handle('666', {'irc': {'channel': None}}, {'joined_channel': None}, log=frog.log)
-    assert 'JOIN ' not in responses
-
-
-
-    return True
-
-
-def test_run_all(logger):
-    logger.print('Running all tests...')
-    assert test_socket(logger.deeper('Socket'))
-    assert test_run(logger.deeper('run'))
-    assert test_handle(logger.deeper('handle'))
-    logger.print('All tests complete!')
-    return True
+    def test_join_channel_when_not_applicable(self):
+        responses = irc.handle('666', {'irc': {'channel': '#testchan'}}, {'joined_channel': '#testchan'}, log=self.frog.log)
+        self.assertNotIn('JOIN ', responses)
+        responses = irc.handle('666', {'irc': {'channel': None}}, {'joined_channel': None}, log=self.frog.log)
+        self.assertNotIn('JOIN ', responses)
 
