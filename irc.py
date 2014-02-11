@@ -1,4 +1,4 @@
-import common, ircparser, logger, statekeeper
+import admin, common, ircparser, logger, statekeeper
 
 import socket
 import random
@@ -109,9 +109,9 @@ def handle(line, settings, state, log=logger.log):
             # TODO: raise some sort of illegal state exception. remember to test for it
             # then what? have we joined two channels? what the shit are we supposed to do?
             pass
-        
+
         state['joined_channel'] = arguments[0]
-        
+
     if command == 'KICK' and arguments[1] == state['nick']:
         log('warning', '[statekeeping] Kicked from channel {} because {}'.format(arguments[0], ' '.join(arguments[1:])))
 
@@ -129,6 +129,12 @@ def handle(line, settings, state, log=logger.log):
         message = ' '.join(arguments[1:])
         # TODO: Turn this into some sort of cooler logging
         print('{}> {}'.format(channel, message))
+
+        # TODO: Better admin shit, this is just poc/temporary
+        if admin.is_admin(user):
+            admin_result = admin.parse_admin_command(message, state['nick'])
+            if admin_result:
+                yield ircparser.make_privmsg(channel, admin_result)
 
         if message == 'hello, world':
             yield ircparser.make_privmsg(channel, 'why, hello!')
