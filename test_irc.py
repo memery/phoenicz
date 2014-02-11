@@ -83,11 +83,11 @@ def test_run(logger):
 
     logger.print('Testing run with invalid settings...')
     try:
-        result = irc.run('', log=flog.log_to_list, sock=pret)
+        result = irc.run('', {}, log=flog.log_to_list, sock=pret)
         assert flog.logged_list[0]
-        irc.run({}, log=flog.log_to_list, sock=pret)
+        irc.run({}, {}, log=flog.log_to_list, sock=pret)
         assert flog.logged_list[1]
-        irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, log=flog.log_to_list, sock=pret)
+        irc.run({'irc': {'server': 'test', 'port': 'bark', 'ssl': 0, 'reconnect_delay': 12}}, {}, log=flog.log_to_list, sock=pret)
         assert flog.logged_list[2]
     except IndexError:
         raise AssertionError('run() didn\'t log')
@@ -101,7 +101,8 @@ def test_run(logger):
     pret.explode = True
     try:
         for i, pret.explosion in enumerate([BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, socket.timeout]):
-            result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}}, log=flog.log_to_list, sock=pret)
+            result = irc.run({'irc': {'server': 'test', 'port': 587, 'ssl': False, 'reconnect_delay': 12}},
+                             {}, log=flog.log_to_list, sock=pret)
             assert flog.logged_list[3 + i]
             assert result == 'reconnect'
     except IndexError:
@@ -111,14 +112,24 @@ def test_run(logger):
 
 
 def test_handle(logger):
+    def force_evaluation(mygen):
+        for _ in mygen:
+            pass
+
     frog = tests.FakeLogger()
 
     logger.print('Checking for response to PING...')
-    responses = irc.handle('PING :abracadabra', {})
+    responses = irc.handle('PING :abracadabra', {}, {})
     assert 'PONG :abracadabra' in responses
-    logger.print('Checking if things get logged correctly')
-    for _ in irc.handle('completely geschtonkenflapped', {}, log=frog.log):
-        pass # We are only interested in the generator's side-effects here.
+
+    logger.print('Checking a broken message results in logging...')
+    force_evaluation(irc.handle('completely geschtonkenflapped', {}, {}, log=frog.log))
+    assert frog.logged
+
+    frog.reset()
+    logger.print('Checking that a nick change happens when nick is in use...')
+    responses = irc.handle('433 anything', {'irc': {'nick': 'orignick'}}, {'irc': {'nick': 'lolbawt'}}, log=frog.log)
+    assert any('NICK ' in response for response in responses)
     assert frog.logged
 
     return True

@@ -17,6 +17,10 @@ class FakeLogger:
     def log_to_list(self, x, y):
         self.logged_list.append(True)
 
+    def reset(self):
+        self.logged = False
+        self.logged_list = []
+
 class Logger:
     def __init__(self, next, previous=[]):
         self.hierarchy = previous + [next]

@@ -1,6 +1,7 @@
 
 import common, logger
 import irc
+from time import sleep
 
 
 def valid_settings(settings, log=logger.log):
@@ -32,8 +33,10 @@ def main():
     if not valid_settings(settings):
         exit()
 
+    state = {}
+
     while True:
-        if irc.run(settings) == 'quit':
+        if irc.run(settings, state) == 'quit':
             break
         sleep(settings['irc']['reconnect_delay'])
 
