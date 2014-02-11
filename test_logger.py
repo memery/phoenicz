@@ -1,70 +1,57 @@
-import os, re, datetime
+import os, re, datetime, unittest
 import logger
 
-def test_error_info(logger_):
-    logger_.print('Testing with non-exception argument...')
-    assert logger.error_info(None) == None
 
-    logger_.print('Testing with bad exception argument...')
-    template = "[Exception] Test - Error when getting stacktrace: 'NoneType' object has no attribute '__context__'"
-    assert logger.error_info(Exception('Test')) == template
+class LoggerTest(unittest.TestCase):
 
-    logger_.print('Testing with functioning exception argument...')
-    rx = re.compile(r'^\[Exception\] Test - test_logger\.py:\d+ in test_error_info$')
-    try:
-        raise Exception('Test')
-    except Exception as e:
-        errortext = logger.error_info(e)
-    assert rx.match(errortext) is not None
-    return True
+    @classmethod
+    def tearDownClass(LoggerTest):
+        try:
+            os.remove('test.txt')
+        except FileNotFoundError:
+            pass
 
-def test_append_file(logger_):
-    logger.append_file('test.txt', 'testdata')    
+    def test_append_file(self):
+        logger.append_file('test.txt', 'testdata')
+        with open('test.txt', 'r') as f:
+            lines = f.readlines()
+        self.assertEqual(lines[-1].strip('\n'), 'testdata')
 
-    logger_.print('Reading appended data and verifying it\'s correct')
-    with open('test.txt', 'r') as f:
-        lines = f.readlines()
+    def test_log_filename(self):
+        ret = logger.log('error', 'error1')
+        self.assertEqual(ret['filename'], 'log/error.log')
 
-    assert lines[-1].strip('\n') == 'testdata'
+    def generic_log_test(self, arg):
+        ret = logger.log('error', arg)
+        self.assertRegex(ret['msg'], r'^{} \[.+\]: {}$'.format(__name__, arg))
 
-    os.remove('test.txt')
+    def test_log_output_format(self):
+        self.generic_log_test('error1')
 
-    return True
+    def test_log_output_format_with_none_argument(self):
+        self.generic_log_test('None')
 
-def test_log(logger_):
-    re_log = re.compile('(.+) \[(.+)\]: (.+)')
+    def test_log_output_format_with_empty_string_argument(self):
+        self.generic_log_test('')
 
-    logger_.print('Testing log output format...')
+    def test_log_output_format_timestamp(self):
+        ret = logger.log('error', 'test')
+        m = re.search(r'^.+ \[(.+)\]: .*$', ret['msg'])
+        try:
+            datetime.datetime.strptime(m.group(1), '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            self.fail('Timestamp format validation failed')
 
-    ret = logger.log('error', 'error1')
+    def test_error_info_non_exception_argument(self):
+        self.assertIsNone(logger.error_info(None))
 
-    assert ret['filename'] == 'log/error.log'
+    def test_error_info_bad_exception_argument(self):
+        template = "[Exception] Test - Error when getting stacktrace: 'NoneType' object has no attribute '__context__'"
+        self.assertEqual(logger.error_info(Exception('Test')), template)
 
-    m = re.search(re_log, ret['msg'])
-
-    assert m.group(1) == __name__
-    assert m.group(3) == 'error1'
-
-
-    logger_.print('Testing with None-type message...')
-
-    ret = logger.log('error', None)
-
-    m = re.search(re_log, ret['msg'])
-
-    assert m.group(1) == __name__
-    assert m.group(3) == 'None'
-
-    logger_.print('Testing date and time format...')
-    datetime.datetime.strptime(m.group(2), '%Y-%m-%d %H:%M:%S')
-
-    return True
-
-
-def test_run_all(logger_):
-    logger_.print('Running all tests...')
-    assert test_error_info(logger_.deeper('error_info'))
-    assert test_append_file(logger_.deeper('append_file'))
-    assert test_log(logger_.deeper('log'))
-    logger_.print('All tests complete!')
-    return True
+    def test_error_info_correct_exception_argument(self):
+        try:
+            raise Exception('Test')
+        except Exception as e:
+            errortext = logger.error_info(e)
+        self.assertRegex(errortext, r'^\[Exception\] Test - \S+?\.py:\d+ in \S+$')

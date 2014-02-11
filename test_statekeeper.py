@@ -1,48 +1,38 @@
 import statekeeper
 
-def test_statekeeper(logger):
-    state = statekeeper.StateKeeper()
-    key, value = 'testkey', '1234'
-
-    logger.print('Checking caller id...')
-    assert state._caller_id() == __file__
-
-    logger.print('Testing set/get value...')
-    state[key] = value
-    assert state[key] == value
-
-    logger.print('Testing get with invalid value...')
-    try:
-        state['invalidkey']
-    except KeyError:
-        pass
-
-    logger.print('Trying to delete key...')
-    del state[key]
-    try:
-        state[key]
-    except KeyError:
-        pass
-
-    logger.print('Testing in-operator...')
-    state[key] = value
-    assert key in state
-
-    logger.print('Testing shared dict set/get...')
-    state.shared[key] = value
-    assert state.shared[key] == value
-
-    logger.print('Trying to remove shared...')
-    try:
-        state.shared = None
-    except AttributeError:
-        pass
-
-    return True
+import unittest
 
 
-def test_run_all(logger):
-    logger.print('Running all tests...')
-    assert test_statekeeper(logger.deeper('StateKeeper'))
-    logger.print('All tests complete!')
-    return True
+class StateKeeperTest(unittest.TestCase):
+
+    def setUp(self):
+        self.state = statekeeper.StateKeeper()
+        self.key, self.value = 'test', 123
+
+    def test_caller_id(self):
+        self.assertEqual(self.state._caller_id(), __file__, 'Caller ID is incorrect')
+
+    def test_set_get(self):
+        self.state[self.key] = self.value
+        self.assertEqual(self.state[self.key], self.value)
+
+    def test_invalid_value(self):
+        with self.assertRaises(KeyError):
+            self.state['invalidkey']
+
+    def test_delete_value(self):
+        self.state[self.key] = self.value
+        del self.state[self.key]
+        self.assertTrue(self.key not in self.state)
+
+    def test_in_operator(self):
+        self.state[self.key] = self.value
+        self.assertTrue(self.key in self.state)
+
+    def test_shared_dict_set_get(self):
+        self.state.shared[self.key] = self.value
+        self.assertEqual(self.state.shared[self.key], self.value)
+
+    def test_remove_shared(self):
+        with self.assertRaises(AttributeError):
+            self.state.shared = None

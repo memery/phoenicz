@@ -1,68 +1,47 @@
-import tests
+import testlib
 import main
 
-def test_valid_settings(logger):
-    flog = tests.FakeLogger()
-    
-    logger.print('Testing validation of broken settings...')
+import unittest
 
-    result = main.valid_settings({}, log=flog.log)
-    assert not result
-    assert flog.logged
+class StateKeeperTest(unittest.TestCase):
 
-    flog.logged = False
-    result = main.valid_settings('', log=flog.log)
-    assert not result
-    assert flog.logged
+    def setUp(self):
+        self.flog = testlib.FakeLogger()
+        self.flog.logged = False
+        self.settings = {'irc': {
+                        'channel': '#channel',
+                        'server': 'irc.example.org',
+                        'port': 6667,
+                        'ssl': True,
+                        'reconnect_delay': 12,
+        }}
 
-    settings = {'irc': {
-                   'nick': 1,
-                   'channel': '#channel',
-                   'server': 'irc.example.org',
-                   'port': 6667,
-                   'ssl': True,
-                   'reconnect_delay': 12,
-               }}
+    def assert_failed_to_validate(self, settings):
+        self.assertFalse(main.valid_settings(settings, log=self.flog.log))
+        self.assertTrue(self.flog.logged)
 
-    flog.logged = False
-    result = main.valid_settings(settings, log=flog.log)
+    def assert_validated(self, settings):
+        self.assertTrue(main.valid_settings(settings, log=self.flog.log))
+        self.assertFalse(self.flog.logged)
 
-    assert not result
-    assert flog.logged
+    def test_validate_broken_settings_empty_dict(self):
+        self.assert_failed_to_validate({})
 
-    logger.print('Testing with missing settings')
+    def test_validate_broken_settings_empty_string(self):
+        self.assert_failed_to_validate('')
 
-    settings['irc'].pop('nick')
-    flog.logged = False
-    result = main.valid_settings(settings, log=flog.log)
+    def test_validate_invalid_settings(self):
+        self.settings['nick'] = 1
+        self.assert_failed_to_validate(self.settings)
 
-    assert not result
-    assert flog.logged
+    def test_validate_incomplete_settings(self):
+        self.assert_failed_to_validate(self.settings)
 
-    logger.print('Testing with valid settings...')
+    def test_validate_valid_settings(self):
+        self.settings['irc']['nick'] = 'nick'
+        self.assert_validated(self.settings)
 
-    flog.logged = False
-    settings['irc']['nick'] = 'nick'
-    result = main.valid_settings(settings, log=flog.log)
-
-    assert result
-    assert not flog.logged
-
-    logger.print('Testing with additional settings...')
-
-    flog.logged = False
-    settings['irc']['lag'] = 'don\'t'
-    result = main.valid_settings(settings, log=flog.log)
-
-    assert result
-    assert not flog.logged
-
-    return True
-
-
-def test_run_all(logger):
-    logger.print('Running all tests...')
-    assert test_valid_settings(logger.deeper('valid_settings'))
-    logger.print('All tests complete!')
-    return True
-
+    def test_validate_extra_settings(self):
+        self.settings['irc']['nick'] = 'nick'
+        self.settings['irc']['lag'] = 'don\'t'
+        self.assert_validated(self.settings)
