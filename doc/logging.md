@@ -1,7 +1,7 @@
 Logging
 =======
 
-The logging system i Phoenix is actually very simple. There is only *one*
+The logging system i Phoenicz is actually very simple. There is only *one*
 function that you should use. Ever. `log(log_type, message)`.
 
 
@@ -31,11 +31,6 @@ will also add line number, filename and what exception it was that occured.
      ---------------       -------
                               |
                               v
-                           -------
-                          | str() |
-                           -------
-                              |
-                              v
                         -------------- 
                        | error_info() | ---
                         --------------     |
@@ -43,9 +38,9 @@ will also add line number, filename and what exception it was that occured.
                              [A]          [B]
                               |            |
                               v            |
-                        ---------------    |
-                       | append_file() | <-
-                        ---------------
+     ---------------       -------         |
+    | append_file() | <-- | str() | <------
+     ---------------       -------
 
 ### Definitions
 
