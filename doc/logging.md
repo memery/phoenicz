@@ -1,9 +1,55 @@
 Logging
 =======
 
-phoenicz is in dire need of some sort of logging solution that can be used for
-everything from errors, to channel content, to abusive users and notifications
-or whatever.
+The logging system i Phoenix is actually very simple. There is only *one*
+function that you should use. Ever. `log(log_type, message)`.
 
 
+## Basic concept
 
+`log(log_type, message)` takes two argument (obviously), The type of log
+you want to log and the message. `log_type` is basically the same as the
+logfile you want to save the message to, i.e. a `log_type` of `foo` will
+print the message to `log/foo.log` and `bar` to `log/bar.log` and so on.
+
+`log()` will also add some useful information such as which module called
+log() and the time and date.
+
+In case of some error (those occured due to uncatched exceptions), `log()`
+will also add line number, filename and what exception it was that occured.
+
+
+## Flowchart
+
+     ---------------       -------
+    | Some function | --> | log() |
+     ---------------       -------
+                              |
+                              v
+                           -------
+                          | str() |
+                           -------
+                              |
+                              v
+                        -------------- 
+                       | error_info() | ---
+                        --------------     |
+                              |            |
+                             [A]          [B]
+                              |            |
+                              v            |
+                        ---------------    |
+                       | append_file() | <-
+                        ---------------
+
+### Definitions
+
+  A. An uncatched exception has occured
+  B. No exception has occured
+
+
+### Explaination
+
+In case of `A`, `error_info()` will add some useful information to the
+log-message, such as on what line and in what function and file the exception
+occured. In `B`-case, the message will be unchanged.
