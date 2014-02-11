@@ -24,7 +24,6 @@ def run(settings, state, log=logger.log, sock=None):
                 settings['irc']['reconnect_delay']/10
             )
 
-        state = statekeeper.StateKeeper()
         state['nick'] = settings['irc']['nick']
         irc.send('NICK {}'.format(settings['irc']['nick']))
 

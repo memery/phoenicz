@@ -1,6 +1,7 @@
 
 import common, logger
 import irc
+import statekeeper
 from time import sleep
 
 
@@ -33,7 +34,7 @@ def main():
     if not valid_settings(settings):
         exit()
 
-    state = {}
+    state = statekeeper.StateKeeper()
 
     while True:
         if irc.run(settings, state) == 'quit':
