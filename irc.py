@@ -25,12 +25,12 @@ def run(settings, state, log=logger.log, sock=None):
             )
 
         state['nick'] = settings['irc']['nick']
-        irc.send('NICK {}'.format(settings['irc']['nick']))
+        state['joined_channel'] = None
 
+        irc.send('NICK {}'.format(state['nick']))
         irc.send('USER {0} 0 * :IRC Bot {0}'.format(settings['irc']['nick']))
 
         sleep(1)
-        irc.send('JOIN {}'.format(settings['irc']['channel']))
 
     except (socket.error, socket.herror, socket.gaierror):
         log('error', 'Connection failed. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
@@ -95,17 +95,47 @@ def handle(line, settings, state, log=logger.log):
         state['nick'] = new_nick(settings['irc']['nick'])
         yield 'NICK {}'.format(state['nick'])
 
+    if command == 'JOIN' and nick == state['nick']:
+        # TODO: Fancy logging
+        print('--> joined {}'.format(arguments[0]))
+
+        if state['joined_channel']:
+            # TODO: raise some sort of illegal state exception. remember to test for it
+            # then what? have we joined two channels? what the shit are we supposed to do?
+            pass
+        
+        state['joined_channel'] = arguments[0]
+        
+    if command == 'KICK' and arguments[1] == state['nick']:
+        log('warning', '[statekeeping] Kicked from channel {} because {}'.format(arguments[0], ' '.join(arguments[1:])))
+
+        if arguments[0] != state['joined_channel']:
+            # TODO: raise some sort of illegal state exception
+            pass
+
+        state['joined_channel'] = None
+        settings['irc']['channel'] = None
 
     if command == 'PRIVMSG':
-        channel = arguments[0]
+        # Make the author the target for replies if it is a private message
+        channel = nick if arguments[0] == state['nick'] else arguments[0]
+
         message = ' '.join(arguments[1:])
         # TODO: Turn this into some sort of cooler logging
         print('{}> {}'.format(channel, message))
 
         if message == 'hello, world':
-            yield ircparser.make_privmsg(settings['irc']['channel'], 'why, hello!')
+            yield ircparser.make_privmsg(channel, 'why, hello!')
     else:
         log('raw', line)
+
+
+    # TODO: Fix the state object so this isn't needed
+    if 'joined_channel' not in state:
+        state['joined_channel'] = None
+
+    if not state['joined_channel'] and settings['irc']['channel']:
+        yield 'JOIN {}'.format(settings['irc']['channel'])
 
 
 class Socket:

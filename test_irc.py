@@ -117,20 +117,58 @@ def test_handle(logger):
             pass
 
     frog = tests.FakeLogger()
+    fakesettings = {'irc': {'channel': '#channel'}}
 
     logger.print('Checking for response to PING...')
-    responses = irc.handle('PING :abracadabra', {}, {})
+    responses = irc.handle('PING :abracadabra', fakesettings, {})
     assert 'PONG :abracadabra' in responses
 
     logger.print('Checking a broken message results in logging...')
-    force_evaluation(irc.handle('completely geschtonkenflapped', {}, {}, log=frog.log))
+    force_evaluation(irc.handle('completely geschtonkenflapped', fakesettings, {}, log=frog.log))
     assert frog.logged
 
-    frog.reset()
     logger.print('Checking that a nick change happens when nick is in use...')
+    frog.reset()
     responses = irc.handle('433 anything', {'irc': {'nick': 'orignick'}}, {'nick': 'lolbawt'}, log=frog.log)
     assert any('NICK ' in response for response in responses)
     assert frog.logged
+
+    logger.print('Checking that channel join results in appropriate state change...')
+    frog.reset()
+    fakestate = {'joined_channel': None, 'nick': 'tnick'}
+    force_evaluation(irc.handle(':tnick!example.com JOIN :#channel', {'irc': {'channel': '#channel'}}, fakestate, log=frog.log))
+    assert fakestate['joined_channel'] == '#channel'
+    # TODO: when it actually logs something, assert frog.logged
+
+    logger.print('Checking that a kick results in removal of channel everywhere...')
+    frog.reset()
+    fakestate = {'joined_channel': '#channel', 'nick': 'tnick'}
+    fakesettings = {'irc': {'channel': '#channel'}}
+    force_evaluation(irc.handle('KICK #channel tnick :asdkfb', fakesettings, fakestate, log=frog.log))
+    assert fakestate['joined_channel'] is None
+    assert fakesettings['irc']['channel'] is None
+    assert frog.logged
+    assert 'asdkfb' in frog.contents
+
+    logger.print('Checking that someone else getting kicked doesn\'t affect status..')
+    frog.reset()
+    fakestate = {'joined_channel': '#channel', 'nick': 'tnick'}
+    fakesettings = {'irc': {'channel': '#channel'}}
+    force_evaluation(irc.handle('KICK #channel wrongnick :reason', fakesettings, fakestate, log=frog.log))
+    assert fakestate['joined_channel'] == '#channel'
+    assert fakesettings['irc']['channel'] == '#channel'
+
+    logger.print('Seeing if handle tries to join channel when applicable...')
+    responses = irc.handle('666', {'irc': {'channel': '#testchan'}}, {'joined_channel': None}, log=frog.log)
+    assert 'JOIN #testchan' in responses
+
+    logger.print('Seeing if handle tries to join channel when NOT applicable...')
+    responses = irc.handle('666', {'irc': {'channel': '#testchan'}}, {'joined_channel': '#testchan'}, log=frog.log)
+    assert 'JOIN ' not in responses
+    responses = irc.handle('666', {'irc': {'channel': None}}, {'joined_channel': None}, log=frog.log)
+    assert 'JOIN ' not in responses
+
+
 
     return True
 
