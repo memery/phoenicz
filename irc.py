@@ -4,7 +4,7 @@ import socket
 import random
 import string
 from ssl import wrap_socket, SSLError
-from time import sleep
+from time import sleep, time
 
 
 # run() should *never* for *any* reason throw any exceptions.
@@ -21,9 +21,11 @@ def run(settings, state, log=logger.log, sock=None):
                 settings['irc']['server'],
                 settings['irc']['port'],
                 settings['irc']['ssl'],
-                settings['irc']['reconnect_delay']/10
+                1 # timeout
             )
 
+        state['last_message'] = time()
+        state['pinged'] = False
         state['nick'] = settings['irc']['nick']
         state['joined_channel'] = None
 
@@ -48,6 +50,7 @@ def run(settings, state, log=logger.log, sock=None):
         try:
             line = irc.read()
             if line:
+                state['last_message'] = time()
                 for response in handle(line, settings, state):
                     irc.send(response)
 
@@ -63,11 +66,12 @@ def run(settings, state, log=logger.log, sock=None):
             log('error', 'Connection refused or aborted. Closing...')
             return 'quit'
         except socket.timeout:
-            log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
-            return 'reconnect'
-            # TODO: More of these errors. stolen from legacy:
-            # probably also
-            #  *  SSLError (if 'timed out' in str(e))?
+            if not state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
+                irc.send('PING :arst')
+                state['pinged'] = True
+            elif state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
+                log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+                return 'reconnect'
         except Exception as e:
             log('error', e)
 
@@ -84,6 +88,9 @@ def handle(line, settings, state, log=logger.log):
 
     if command == 'PING':
         yield 'PONG :' + arguments[0]
+
+    if command == 'PONG':
+        state['pinged'] = False
 
     if command == '433':
         def new_nick(nick):
@@ -169,14 +176,8 @@ class Socket:
         self.sock.send(bytes(text + '\n', 'utf-8'))
 
     def read(self):
-        try:
-            if b'\r\n' not in self.buffer:
-                self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
-        except socket.timeout:
-            pass
-        except SSLError as e:
-            if 'timed out' in str(e): pass
-            else: raise
+        if b'\r\n' not in self.buffer:
+            self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
 
         try:
             [byteline, self.buffer] = self.buffer.split(b'\r\n', 1)

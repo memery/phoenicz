@@ -13,6 +13,7 @@ def valid_settings(settings, log=logger.log):
                      'port': int,
                      'ssl': bool,
                      'reconnect_delay': int,
+                     'grace_period': int,
                  }}
 
     for category in essentials:

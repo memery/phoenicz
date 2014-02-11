@@ -3,7 +3,7 @@ import main
 
 import unittest
 
-class StateKeeperTest(unittest.TestCase):
+class MainTest(unittest.TestCase):
 
     def setUp(self):
         self.flog = testlib.FakeLogger()
@@ -14,6 +14,7 @@ class StateKeeperTest(unittest.TestCase):
                         'port': 6667,
                         'ssl': True,
                         'reconnect_delay': 12,
+                        'grace_period': 120,
         }}
 
     def assert_failed_to_validate(self, settings):
