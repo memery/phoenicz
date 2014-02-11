@@ -24,8 +24,10 @@ def run(settings, state, log=logger.log, sock=None):
                 settings['irc']['reconnect_delay']/10
             )
 
+        # TODO: The following line can be solved better with a state object
+        state['irc'] = {}
         state['irc']['nick'] = settings['irc']['nick']
-        irc.send('NICK {}'.format(state['irc']['nick']))
+        irc.send('NICK {}'.format(settings['irc']['nick']))
 
         irc.send('USER {0} 0 * :IRC Bot {0}'.format(settings['irc']['nick']))
 
