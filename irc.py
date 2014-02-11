@@ -1,4 +1,4 @@
-import ircparser, logger
+import common, ircparser, logger
 
 import socket
 import random
@@ -38,7 +38,8 @@ def run(settings, state, log=logger.log, sock=None):
         return 'reconnect'
     except Exception as e:
         try:
-            log('error', '{}. Reconnecting in {} seconds...'.format(e, settings['irc']['reconnect_delay']))
+            log('error', '{}. Reconnecting in {} seconds...'.format(common.error_info(e),
+                                                                    settings['irc']['reconnect_delay']))
         except:
             log('error', 'Bad config.')
 
@@ -69,7 +70,7 @@ def run(settings, state, log=logger.log, sock=None):
             # probably also
             #  *  SSLError (if 'timed out' in str(e))?
         except Exception as e:
-            log('error', str(e))
+            log('error', common.error_info(e))
 
     return 'reconnect'
 
@@ -161,8 +162,5 @@ class Socket:
             # fallback is iso-8859-1
             # TODO: why is it, though? why not utf-8?
             return text.decode('latin-1', 'replace')
-        
+
         return decode(byteline, ['utf-8', 'latin-1', 'cp1252'])
-
-
-
