@@ -21,7 +21,6 @@ def run(settings, state, log=logger.log, sock=None):
                 settings['irc']['server'],
                 settings['irc']['port'],
                 settings['irc']['ssl'],
-                1 # timeout
             )
 
         state['last_message'] = time()
@@ -49,10 +48,19 @@ def run(settings, state, log=logger.log, sock=None):
     while True:
         try:
             line = irc.read()
+
             if line:
                 state['last_message'] = time()
                 for response in handle(line, settings, state):
                     irc.send(response)
+            else:
+                if not state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
+                    irc.send('PING :arst')
+                    state['pinged'] = True
+                elif state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
+                    log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+                    return 'reconnect'
+
 
         # TODO: These exceptions should be handled in the socket class. They are overridden
               # earlier in this function in the handshake.
@@ -65,13 +73,6 @@ def run(settings, state, log=logger.log, sock=None):
         except (ConnectionAbortedError, ConnectionRefusedError):
             log('error', 'Connection refused or aborted. Closing...')
             return 'quit'
-        except socket.timeout:
-            if not state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
-                irc.send('PING :arst')
-                state['pinged'] = True
-            elif state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
-                log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
-                return 'reconnect'
         except Exception as e:
             log('error', e)
 
@@ -157,7 +158,7 @@ class Socket:
         and returns a list of strings which are the read lines
         without a line separator."""
 
-    def __init__(self, server, port, ssl_enabled, timeout,
+    def __init__(self, server, port, ssl_enabled,
                    sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM),
                    ssl_wrap=wrap_socket):
         # try to connect
@@ -169,7 +170,7 @@ class Socket:
         if ssl_enabled:
             sock = ssl_wrap(sock)
 
-        sock.settimeout(timeout)
+        sock.settimeout(1)
 
         self.ssl_enabled = ssl_enabled
         self.sock = sock
@@ -182,9 +183,12 @@ class Socket:
         self.sock.send(bytes(text + '\n', 'utf-8'))
 
     def read(self):
-        if b'\r\n' not in self.buffer:
-            self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
-
+        try:
+            if b'\r\n' not in self.buffer:
+                self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
+        except socket.timeout:
+            return None
+    
         try:
             [byteline, self.buffer] = self.buffer.split(b'\r\n', 1)
         except ValueError:
