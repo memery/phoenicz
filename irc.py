@@ -3,6 +3,7 @@ import admin, common, ircparser, logger, statekeeper
 import socket
 import random
 import string
+import errno
 from ssl import wrap_socket, SSLError
 from time import sleep, time
 
@@ -150,7 +151,7 @@ class SocketError(Exception):
     def __init__(self, error):
         self.error = error
        
-    def __str__(self):
+    def __get__(self):
         try:
             return  { errno.EPIPE:        (self.error, 'reconnect'),
                       errno.ECONNRESET:   (self.error, 'reconnect'),
@@ -191,6 +192,8 @@ class Socket:
         # TODO: sanity checking
         try:
             self.sock.send(bytes(text + '\n', 'utf-8'))
+        except socket.timeout:
+            pass
         except socket.error as e:
             raise SocketError(e)
 
