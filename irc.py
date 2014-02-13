@@ -18,11 +18,15 @@ def run(settings, state, log=logger.log, sock=None):
         if sock:
             irc = sock
         else:
-            irc = Socket(
-                settings['irc']['server'],
-                settings['irc']['port'],
-                settings['irc']['ssl'],
-            )
+            try:
+                irc = Socket(
+                    settings['irc']['server'],
+                    settings['irc']['port'],
+                    settings['irc']['ssl'],
+                )
+            except (socket.error, socket.herror, socket.gaierror):
+                log('error', 'Connection failed.')
+                return 'reconnect'
 
         state['last_message'] = time()
         state['pinged'] = False
@@ -38,17 +42,9 @@ def run(settings, state, log=logger.log, sock=None):
         # e is equal to ((errno, reason), recommendation)
         log('error', e[0][1])
         return e[1]
-    except (socket.error, socket.herror, socket.gaierror):
-        log('error', 'Connection failed.')
 
-        return 'reconnect'
     except Exception as e:
-        try:
-            log('error', '{}. Reconnecting in {} seconds...'.format(e, settings['irc']['reconnect_delay']))
-        except:
-            log('error', 'Bad config.')
-
-        return 'reconnect'
+        log('error', e)
 
     while True:
         try:
@@ -65,12 +61,14 @@ def run(settings, state, log=logger.log, sock=None):
                 elif state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
                     log('error', 'Connection timed out.')
                     return 'reconnect'
+
         except SocketError as e:
             # e is equal to ((errno, reason), recommendation)
             log('error', e[0][1])
             return e[1]
+
         except Exception as e:
-            log('error', str(e))
+            log('error', e)
 
     return 'reconnect'
 
@@ -192,8 +190,6 @@ class Socket:
         # TODO: sanity checking
         try:
             self.sock.send(bytes(text + '\n', 'utf-8'))
-        except socket.timeout:
-            pass
         except socket.error as e:
             raise SocketError(e)
 
