@@ -30,7 +30,7 @@ def valid_settings(settings, log=logger.log):
     return True
 
 
-def main():
+def main(log=logger.log):
     settings = common.read_config('config.json')
     if not valid_settings(settings):
         exit()
@@ -40,6 +40,8 @@ def main():
     while True:
         if irc.run(settings, state) == 'quit':
             break
+
+        log('error', 'Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
         sleep(settings['irc']['reconnect_delay'])
 
 

@@ -33,8 +33,12 @@ def run(settings, state, log=logger.log, sock=None):
 
         sleep(1)
 
+    except SocketError as e:
+        # e is equal to ((errno, reason), recommendation)
+        log('error', e[0][1])
+        return e[1]
     except (socket.error, socket.herror, socket.gaierror):
-        log('error', 'Connection failed. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+        log('error', 'Connection failed.')
 
         return 'reconnect'
     except Exception as e:
@@ -58,23 +62,14 @@ def run(settings, state, log=logger.log, sock=None):
                     irc.send('PING :arst')
                     state['pinged'] = True
                 elif state['pinged'] and time() - state['last_message'] > settings['irc']['grace_period']:
-                    log('error', 'Connection timed out. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
+                    log('error', 'Connection timed out.')
                     return 'reconnect'
-
-
-        # TODO: These exceptions should be handled in the socket class. They are overridden
-              # earlier in this function in the handshake.
-        except BrokenPipeError:
-            log('error', 'Broken pipe. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
-            return 'reconnect'
-        except ConnectionResetError:
-            log('error', 'Connection reset. Reconnecting in {} seconds...'.format(settings['irc']['reconnect_delay']))
-            return 'reconnect'
-        except (ConnectionAbortedError, ConnectionRefusedError):
-            log('error', 'Connection refused or aborted. Closing...')
-            return 'quit'
+        except SocketError as e:
+            # e is equal to ((errno, reason), recommendation)
+            log('error', e[0][1])
+            return e[1]
         except Exception as e:
-            log('error', e)
+            log('error', str(e))
 
     return 'reconnect'
 
@@ -151,6 +146,20 @@ def handle(line, settings, state, log=logger.log):
         yield 'JOIN {}'.format(settings['irc']['channel'])
 
 
+class SocketError(Exception):
+    def __init__(self, error):
+        self.error = error
+       
+    def __str__(self):
+        try:
+            return  { errno.EPIPE:        (self.error, 'reconnect'),
+                      errno.ECONNRESET:   (self.error, 'reconnect'),
+                      errno.ECONNABORTED: (self.error, 'quit'),
+                      errno.ECONNREFUSED: (self.error, 'quit'),
+                    }[self.error[0]]
+        except KeyError:
+            raise socket.error(self.error)
+
 class Socket:
 
     """ A line buffered IRC socket interface. send(text) sends
@@ -180,7 +189,10 @@ class Socket:
 
     def send(self, text):
         # TODO: sanity checking
-        self.sock.send(bytes(text + '\n', 'utf-8'))
+        try:
+            self.sock.send(bytes(text + '\n', 'utf-8'))
+        except socket.error as e:
+            raise SocketError(e)
 
     def read(self):
         try:
@@ -188,6 +200,8 @@ class Socket:
                 self.buffer += self.sock.read(4096) if self.ssl_enabled else self.sock.recv(4096)
         except socket.timeout:
             return None
+        except socket.error as e:
+            raise SocketError(e)
     
         try:
             [byteline, self.buffer] = self.buffer.split(b'\r\n', 1)

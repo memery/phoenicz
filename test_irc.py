@@ -49,7 +49,7 @@ class SocketTest(unittest.TestCase):
 
         for ssl in (False, True):
             pret = PretendSocket()
-            sock = irc.Socket('server', 42, ssl, 300, sock=pret, ssl_wrap=fakewrapper)
+            sock = irc.Socket('server', 42, ssl, sock=pret, ssl_wrap=fakewrapper)
 
             # no contents, reading should be empty string
             self.assertIsNone(sock.read())
